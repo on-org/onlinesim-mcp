@@ -107,8 +107,16 @@ echo
 echo "Next:"
 echo "  onlinesim login"
 echo "  onlinesim doctor"
-echo
-echo "MCP (Streamable HTTP):"
 echo "  onlinesim mcp"
-echo "  endpoint: http://127.0.0.1:8787/mcp"
-echo "  Claude Code: claude mcp add --transport http onlinesim http://127.0.0.1:8787/mcp"
+echo
+echo "MCP endpoint (keep mcp running):"
+echo "  http://127.0.0.1:8787/mcp"
+echo
+echo "Connect:"
+echo "  Claude Code:  claude mcp add --transport http onlinesim http://127.0.0.1:8787/mcp"
+echo "  Codex:        codex mcp add onlinesim --url http://127.0.0.1:8787/mcp"
+echo "  Cursor JSON:  {\"mcpServers\":{\"onlinesim\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:8787/mcp\"}}}"
+echo "  VS Code:      {\"servers\":{\"onlinesim\":{\"type\":\"http\",\"url\":\"http://127.0.0.1:8787/mcp\"}}}"
+echo "  Desktop:      npx -y mcp-remote http://127.0.0.1:8787/mcp --transport http-only"
+echo
+echo "Docs: https://github.com/on-org/onlinesim-mcp#connect-an-mcp-client"

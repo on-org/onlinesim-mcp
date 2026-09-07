@@ -130,7 +130,7 @@ url = "http://127.0.0.1:8787/mcp"
 - **Public HTTPS URL** — Settings → Connectors → Add custom connector → paste the endpoint URL.
 - **Local `http://127.0.0.1/…`** via `url` in `claude_desktop_config.json` is usually unsupported (that file is stdio-oriented). Options: a Custom Connector on proxied HTTPS, or a stdio bridge to Streamable HTTP (e.g. `npx -y mcp-remote http://127.0.0.1:8787/mcp --transport http-only`).
 
-Any other client with Streamable HTTP support: use the same URL and HTTP / streamable-http transport.
+Any other client with Streamable HTTP: use the same URL. Full configs: [Connect an MCP client](https://github.com/on-org/onlinesim-mcp#connect-an-mcp-client).
 
 ## MCP tools
 
