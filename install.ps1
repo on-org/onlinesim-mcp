@@ -9,7 +9,14 @@ $InstallDir = if ($env:ONLINESIM_INSTALL_DIR) { $env:ONLINESIM_INSTALL_DIR } els
     Join-Path $env:LOCALAPPDATA "onlinesim\bin"
 }
 
-$Target = "x86_64-pc-windows-msvc"
+$Arch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+$Target = switch ($Arch) {
+    "Arm64" { "aarch64-pc-windows-msvc" }
+    "X64" { "x86_64-pc-windows-msvc" }
+    default {
+        throw "Unsupported Windows architecture: $Arch (need X64 or Arm64)"
+    }
+}
 $Asset = "$BinName-$Target.zip"
 
 Write-Host "Detecting latest release for $Repo ($Target)..."

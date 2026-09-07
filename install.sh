@@ -22,7 +22,16 @@ os="$(uname -s | tr '[:upper:]' '[:lower:]')"
 arch="$(uname -m)"
 
 case "$os" in
-  linux) os="unknown-linux-gnu" ;;
+  linux)
+    libc="${ONLINESIM_LIBC:-gnu}"
+    case "$libc" in
+      gnu|musl) os="unknown-linux-${libc}" ;;
+      *)
+        echo "error: ONLINESIM_LIBC must be gnu or musl (got: $libc)" >&2
+        exit 1
+        ;;
+    esac
+    ;;
   darwin) os="apple-darwin" ;;
   mingw*|msys*|cygwin*)
     echo "error: use install.ps1 on Windows" >&2
