@@ -57,11 +57,15 @@ Write-Host ""
 Write-Host "MCP endpoint (keep mcp running):"
 Write-Host "  http://127.0.0.1:8787/mcp"
 Write-Host ""
-Write-Host "Connect:"
-Write-Host "  Claude Code:  claude mcp add --transport http onlinesim http://127.0.0.1:8787/mcp"
-Write-Host "  Codex:        codex mcp add onlinesim --url http://127.0.0.1:8787/mcp"
-Write-Host '  Cursor JSON:  {"mcpServers":{"onlinesim":{"type":"http","url":"http://127.0.0.1:8787/mcp"}}}'
-Write-Host '  VS Code:      {"servers":{"onlinesim":{"type":"http","url":"http://127.0.0.1:8787/mcp"}}}'
-Write-Host "  Desktop:      npx -y mcp-remote http://127.0.0.1:8787/mcp --transport http-only"
+Write-Host "Connect (keep onlinesim mcp running):"
+Write-Host "  Claude Code global:  claude mcp add --scope user --transport http onlinesim http://127.0.0.1:8787/mcp"
+Write-Host "  Claude Code project: claude mcp add --scope project --transport http onlinesim http://127.0.0.1:8787/mcp"
+Write-Host "  Codex:               codex mcp add onlinesim --url http://127.0.0.1:8787/mcp"
+Write-Host "  Cursor global:       ~/.cursor/mcp.json"
+Write-Host "  Cursor project:      .cursor/mcp.json"
+Write-Host '  Cursor / Claude JSON: {"mcpServers":{"onlinesim":{"type":"http","url":"http://127.0.0.1:8787/mcp"}}}'
+Write-Host "  VS Code project:     .vscode/mcp.json"
+Write-Host '  VS Code JSON:        {"servers":{"onlinesim":{"type":"http","url":"http://127.0.0.1:8787/mcp"}}}'
+Write-Host "  Desktop:             npx -y mcp-remote http://127.0.0.1:8787/mcp --transport http-only"
 Write-Host ""
 Write-Host "Docs: https://github.com/on-org/onlinesim-mcp#connect-an-mcp-client"

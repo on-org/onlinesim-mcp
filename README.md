@@ -62,17 +62,9 @@ The MCP client cannot connect until `onlinesim mcp` is running. Non-loopback bin
 
 ## Connect an MCP client
 
-Endpoint: `http://127.0.0.1:8787/mcp` (or your `--bind`).
+Endpoint: `http://127.0.0.1:8787/mcp` (or your `--bind`). Keep `onlinesim mcp` running.
 
-Config file names and keys differ by client; the protocol is the same.
-
-### Claude Code
-
-```bash
-claude mcp add --transport http onlinesim http://127.0.0.1:8787/mcp
-```
-
-Or in `.mcp.json` / user config (`type` is required):
+Same JSON body for Cursor and Claude Code project files (`type` is required):
 
 ```json
 {
@@ -85,27 +77,34 @@ Or in `.mcp.json` / user config (`type` is required):
 }
 ```
 
+### Cursor
+
+| Scope | File |
+|-------|------|
+| **Global** (all projects) | `~/.cursor/mcp.json` |
+| **Project** (this repo / team) | `.cursor/mcp.json` |
+
+Or: Command Palette → **Open MCP settings** → **Add custom MCP**.
+
+### Claude Code
+
+| Scope | How |
+|-------|-----|
+| **Global** (all projects) | `claude mcp add --scope user --transport http onlinesim http://127.0.0.1:8787/mcp` |
+| **Project** (shared via git) | `claude mcp add --scope project --transport http onlinesim …` → writes `.mcp.json` |
+| **Local** (you, this project only) | `claude mcp add --transport http onlinesim …` (default) |
+
+Manual project file: `.mcp.json` at the repo root (same JSON as above). User/local scopes live in `~/.claude.json` — prefer the CLI.
+
 ### VS Code (GitHub Copilot)
 
-`.vscode/mcp.json` — root key is `servers`, not `mcpServers`:
+Project file: `.vscode/mcp.json` — root key is **`servers`**, not `mcpServers`:
 
 ```json
 {
   "servers": {
     "onlinesim": {
       "type": "http",
-      "url": "http://127.0.0.1:8787/mcp"
-    }
-  }
-}
-```
-
-### Clients that use `mcpServers` + `url`
-
-```json
-{
-  "mcpServers": {
-    "onlinesim": {
       "url": "http://127.0.0.1:8787/mcp"
     }
   }
@@ -130,7 +129,7 @@ url = "http://127.0.0.1:8787/mcp"
 - **Public HTTPS URL** — Settings → Connectors → Add custom connector → paste the endpoint URL.
 - **Local `http://127.0.0.1/…`** via `url` in `claude_desktop_config.json` is usually unsupported (that file is stdio-oriented). Options: a Custom Connector on proxied HTTPS, or a stdio bridge to Streamable HTTP (e.g. `npx -y mcp-remote http://127.0.0.1:8787/mcp --transport http-only`).
 
-Any other client with Streamable HTTP: use the same URL. Full configs: [Connect an MCP client](https://github.com/on-org/onlinesim-mcp#connect-an-mcp-client).
+Any other Streamable HTTP client: same URL.
 
 ## MCP tools
 
