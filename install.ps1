@@ -31,13 +31,15 @@ try {
     Invoke-WebRequest -Uri $Url -OutFile $ZipPath
     Expand-Archive -Path $ZipPath -DestinationPath $Tmp.FullName -Force
     New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
-    $Src = Join-Path $Tmp.FullName "$BinName.exe"
-    Copy-Item -Force $Src (Join-Path $InstallDir "$BinName.exe")
+    $Dest = Join-Path $InstallDir "$BinName.exe"
+    Copy-Item -Force $Src $Dest
+    # Clear Mark-of-the-Web so SmartScreen does not treat the unzipped exe as blocked.
+    Unblock-File -Path $Dest -ErrorAction SilentlyContinue
 } finally {
     Remove-Item -Recurse -Force $Tmp.FullName
 }
 
-Write-Host "Installed $(Join-Path $InstallDir "$BinName.exe") ($Tag)"
+Write-Host "Installed $Dest ($Tag)"
 $pathEntry = $InstallDir
 $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($userPath -notlike "*$pathEntry*") {

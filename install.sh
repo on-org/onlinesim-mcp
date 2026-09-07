@@ -75,9 +75,26 @@ fi
 
 tar -xzf "${tmpdir}/${asset}" -C "$tmpdir"
 mkdir -p "$INSTALL_DIR"
-install -m 755 "${tmpdir}/${BIN_NAME}" "${INSTALL_DIR}/${BIN_NAME}"
+dest="${INSTALL_DIR}/${BIN_NAME}"
+install -m 755 "${tmpdir}/${BIN_NAME}" "$dest"
+chmod +x "$dest"
 
-echo "Installed ${INSTALL_DIR}/${BIN_NAME} (${tag})"
+# macOS: downloads from the internet get com.apple.quarantine; clear it and
+# ad-hoc sign locally (same idea as `codesign --sign -` on .app bundles).
+case "$(uname -s)" in
+  Darwin)
+    echo "macOS: clearing quarantine + ad-hoc codesign..."
+    xattr -cr "$dest" 2>/dev/null || true
+    if command -v codesign >/dev/null 2>&1; then
+      codesign --force --sign - "$dest" || {
+        echo "warning: codesign failed — if Gatekeeper blocks the binary, run:" >&2
+        echo "  xattr -cr \"$dest\" && codesign --force --sign - \"$dest\"" >&2
+      }
+    fi
+    ;;
+esac
+
+echo "Installed ${dest} (${tag})"
 case ":$PATH:" in
   *":${INSTALL_DIR}:"*) ;;
   *)
