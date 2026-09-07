@@ -64,7 +64,31 @@ The MCP client cannot connect until `onlinesim mcp` is running. Non-loopback bin
 
 Endpoint: `http://127.0.0.1:8787/mcp` (or your `--bind`). Keep `onlinesim mcp` running.
 
-Same JSON body for Cursor and Claude Code project files (`type` is required):
+### Auto-wire (recommended)
+
+```bash
+# Cursor, this project (default)
+onlinesim mcp install
+
+# Cursor, all projects
+onlinesim mcp install --client cursor --global
+
+# VS Code Copilot (project only)
+onlinesim mcp install --client vscode --project
+
+# Claude Code project file (.mcp.json)
+onlinesim mcp install --client claude --project
+
+# Cursor + VS Code + Claude project files
+onlinesim mcp install --client all --project
+
+# Codex (global ~/.codex/config.toml)
+onlinesim mcp install --client codex --global
+```
+
+Flags: `--dir <project-root>`, `--url <endpoint>`, `--force` (overwrite existing `onlinesim` entry).
+
+Or edit configs manually — same JSON body for Cursor and Claude Code project files (`type` is required):
 
 ```json
 {
@@ -79,10 +103,10 @@ Same JSON body for Cursor and Claude Code project files (`type` is required):
 
 ### Cursor
 
-| Scope | File |
-|-------|------|
-| **Global** (all projects) | `~/.cursor/mcp.json` |
-| **Project** (this repo / team) | `.cursor/mcp.json` |
+| Scope | File | CLI |
+|-------|------|-----|
+| **Global** (all projects) | `~/.cursor/mcp.json` | `onlinesim mcp install --client cursor --global` |
+| **Project** (this repo / team) | `.cursor/mcp.json` | `onlinesim mcp install` |
 
 Or: Command Palette → **Open MCP settings** → **Add custom MCP**.
 
@@ -90,13 +114,17 @@ Or: Command Palette → **Open MCP settings** → **Add custom MCP**.
 
 | Scope | How |
 |-------|-----|
-| **Global** (all projects) | `claude mcp add --scope user --transport http onlinesim http://127.0.0.1:8787/mcp` |
-| **Project** (shared via git) | `claude mcp add --scope project --transport http onlinesim …` → writes `.mcp.json` |
+| **Global** (all projects) | `onlinesim mcp install --client claude --global` or `claude mcp add --scope user --transport http onlinesim …` |
+| **Project** (shared via git) | `onlinesim mcp install --client claude --project` → `.mcp.json` |
 | **Local** (you, this project only) | `claude mcp add --transport http onlinesim …` (default) |
 
-Manual project file: `.mcp.json` at the repo root (same JSON as above). User/local scopes live in `~/.claude.json` — prefer the CLI.
+Manual project file: `.mcp.json` at the repo root (same JSON as above). User scope: `~/.claude.json`.
 
 ### VS Code (GitHub Copilot)
+
+```bash
+onlinesim mcp install --client vscode --project
+```
 
 Project file: `.vscode/mcp.json` — root key is **`servers`**, not `mcpServers`:
 
@@ -114,6 +142,8 @@ Project file: `.vscode/mcp.json` — root key is **`servers`**, not `mcpServers`
 ### Codex
 
 ```bash
+onlinesim mcp install --client codex --global
+# or:
 codex mcp add onlinesim --url http://127.0.0.1:8787/mcp
 ```
 
