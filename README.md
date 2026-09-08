@@ -91,6 +91,25 @@ sudo onlinesim mcp autostart install --system
 
 Runs as your user by default, so `onlinesim login` / config keep working. Autostart survives reboot after you log in (Windows/macOS) or with a user systemd session (Linux).
 
+### System tray
+
+While `onlinesim mcp` is running, a tray icon (existing app icon) shows:
+
+- balance, active Quick SMS / rental numbers
+- copy number, SMS code, or full message
+- desktop notification on new SMS (code auto-copied when detected); toggle **Notify on SMS**
+- cancel a Quick SMS order
+- install Cursor / VS Code client config
+- toggle **Start at login**
+- **Quit MCP**
+
+```bash
+onlinesim mcp                 # tray on (macOS/Windows; Linux if DISPLAY/WAYLAND set)
+onlinesim mcp --no-tray       # headless / SSH / CI
+```
+
+Linux desktop builds need GTK/AppIndicator (`libgtk-3`, `libayatana-appindicator3`). musl release binaries ship without tray (`--no-default-features`).
+
 ## Connect an MCP client
 
 Endpoint: `http://127.0.0.1:8787/mcp` (or your `--bind`). Keep `onlinesim mcp` running.
