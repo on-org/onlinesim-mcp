@@ -60,6 +60,16 @@ onlinesim mcp
 
 The MCP client cannot connect until `onlinesim mcp` is running. Non-loopback binds are refused unless `--allow-remote` (the MCP endpoint has no auth). For access from another host or the cloud, put HTTPS and access control in front yourself — the default bind is loopback only.
 
+### Logs (stderr)
+
+By default the MCP process logs at **info** on stderr: startup (bind, auth source without the key), each tool call start/ok/err with duration, and wait start/finish (outcome only — never the SMS code).
+
+```bash
+onlinesim mcp                 # onlinesim_mcp=info
+onlinesim -v mcp              # onlinesim_mcp=debug (catalog cache, …)
+RUST_LOG=onlinesim_mcp=debug onlinesim mcp   # explicit filter wins over -v
+```
+
 ## Connect an MCP client
 
 Endpoint: `http://127.0.0.1:8787/mcp` (or your `--bind`). Keep `onlinesim mcp` running.
