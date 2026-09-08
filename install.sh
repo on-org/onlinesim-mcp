@@ -108,8 +108,9 @@ echo "Next:"
 echo "  onlinesim login"
 echo "  onlinesim doctor"
 echo "  onlinesim mcp"
+echo "  onlinesim mcp autostart install   # optional: login/reboot background"
 echo
-echo "MCP endpoint (keep mcp running):"
+echo "MCP endpoint (keep mcp running, or use autostart):"
 echo "  http://127.0.0.1:8787/mcp"
 echo
 echo "Connect (keep onlinesim mcp running):"

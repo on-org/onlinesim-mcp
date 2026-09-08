@@ -70,6 +70,27 @@ onlinesim -v mcp              # onlinesim_mcp=debug (catalog cache, …)
 RUST_LOG=onlinesim_mcp=debug onlinesim mcp   # explicit filter wins over -v
 ```
 
+### Autostart
+
+Enable login/reboot autostart with [`auto-launcher`](https://crates.io/crates/auto-launcher) — same model on every OS (no Windows SCM):
+
+| OS | User (default) | `--system` |
+|---|---|---|
+| Windows | HKCU Run | HKLM Run (admin) |
+| macOS | LaunchAgent `~/Library/LaunchAgents` | LaunchDaemon (sudo) |
+| Linux | systemd --user | systemd system (sudo) |
+
+```bash
+onlinesim mcp autostart install              # enable + start in background
+onlinesim mcp autostart status
+onlinesim mcp autostart start                # start now without changing autostart
+onlinesim mcp autostart uninstall            # disable autostart
+
+sudo onlinesim mcp autostart install --system
+```
+
+Runs as your user by default, so `onlinesim login` / config keep working. Autostart survives reboot after you log in (Windows/macOS) or with a user systemd session (Linux).
+
 ## Connect an MCP client
 
 Endpoint: `http://127.0.0.1:8787/mcp` (or your `--bind`). Keep `onlinesim mcp` running.
