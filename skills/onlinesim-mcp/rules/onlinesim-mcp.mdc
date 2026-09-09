@@ -1,0 +1,17 @@
+---
+description: Always ensure Onlinesim MCP binary, server, and auth before other work
+alwaysApply: true
+---
+
+# Onlinesim MCP — session start
+
+At the **beginning of every chat** (before other tools):
+
+1. Locate the `onlinesim-mcp` skill directory (project `.cursor/skills/onlinesim-mcp` or `~/.cursor/skills/onlinesim-mcp`).
+2. Run `scripts/ensure-ready.sh` (macOS/Linux) or `scripts/ensure-ready.ps1` (Windows).
+3. Act on the printed status:
+   - `auth=missing` → ask the user to paste an API key (site https://onlinesim.io/ , top up https://onlinesim.io/v2/payment ), then run `onlinesim login --apikey …`. Do **not** put the key in MCP tool arguments or logs.
+   - `mcp=fail` / `binary=fail` → show the script error and fix once.
+   - `action=ready` → proceed.
+
+Full playbook: read `SKILL.md` in that skill folder.

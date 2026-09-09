@@ -16,6 +16,22 @@ The API key lives in local config (`onlinesim login`) or `ONLINESIM_APIKEY`. Nev
 
 ## Install
 
+### Agent skill (auto ensure)
+
+Installs the skill so the agent can install the binary, start MCP, and ask for login when needed:
+
+```bash
+npx skills add on-org/onlinesim-mcp                  # this workspace
+npx skills add on-org/onlinesim-mcp -g               # all projects
+npx skills add on-org/onlinesim-mcp -a cursor -y     # Cursor only
+```
+
+Then open a new agent chat. The skill runs `scripts/ensure-ready` first (binary → MCP up → auth). If there is no API key, the agent asks you to paste it and runs `onlinesim login --apikey …`.
+
+**Always-on (every chat):** copy [`skills/onlinesim-mcp/rules/onlinesim-mcp.mdc`](skills/onlinesim-mcp/rules/onlinesim-mcp.mdc) to your project `.cursor/rules/`, or paste it into **Cursor → Settings → Rules → User Rules**.
+
+### Direct binary (no agent)
+
 ```bash
 # macOS / Linux
 curl -fsSL https://raw.githubusercontent.com/on-org/onlinesim-mcp/master/install.sh | sh
