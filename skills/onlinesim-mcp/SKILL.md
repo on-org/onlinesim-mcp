@@ -56,6 +56,7 @@ Optional always-on (every Cursor chat): copy [`rules/onlinesim-mcp.mdc`](rules/o
 
 1. `get_account_balance` (or `onlinesim balance`) — if low, send top-up link.
 2. `search_sms_services` → `find_cheapest_sms_countries` / `get_sms_service_countries`.
+   Full country directory (no service): `list_sms_countries`.
 3. `order_sms_verification` with catalog `serviceId` + `countryId` only (spends balance).
 4. User enters the phone on the target site/app and requests SMS.
 5. Prefer `wait_sms_verification(orderId)`; else poll `check_sms_verification` every 15–30s.

@@ -235,6 +235,7 @@ Any other Streamable HTTP client: same URL.
 | `search_sms_services` | Search Quick SMS services |
 | `get_sms_service_countries` | Countries for a `serviceId` |
 | `find_cheapest_sms_countries` | Cheapest `countryId`s by price |
+| `list_sms_countries` | All unique countries (no `serviceId`) |
 | `order_sms_verification` | Order a number (**spends** balance) |
 | `wait_sms_verification` | Wait for a code (default 45s, max 60; shared poller) |
 | `check_sms_verification` | Status / code by `orderIds` |
