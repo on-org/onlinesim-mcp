@@ -1,0 +1,16 @@
+# onlinesim-mcp
+
+> Local MCP server (Streamable HTTP) and CLI for OnlineSim: order receive-only numbers and read SMS from AI agents.
+
+## Documentation Sets
+
+- [onlinesim-mcp — full docs](https://on-org.github.io/onlinesim-mcp/llms-full.txt): Complete documentation of the OnlineSim MCP server and CLI.
+
+## Documentation
+
+- [Changelog](https://on-org.github.io/onlinesim-mcp/raw/changelog.md): Release notes of onlinesim-mcp.
+- [CLI](https://on-org.github.io/onlinesim-mcp/raw/cli.md): The MCP tools from the terminal — onlinesim sms, rent, balance — with a stable JSON envelope for scripts.
+- [Connect a client](https://on-org.github.io/onlinesim-mcp/raw/clients.md): Point Cursor, Claude Code, VS Code Copilot, Codex, Claude Desktop or any Streamable HTTP MCP client at onlinesim mcp.
+- [Configuration](https://on-org.github.io/onlinesim-mcp/raw/configuration.md): API key, config file and environment, logs, autostart, the system tray and network safety of onlinesim mcp.
+- [Install](https://on-org.github.io/onlinesim-mcp/raw/install.md): Install the onlinesim binary on macOS, Linux or Windows, or let your agent do it with the agent skill.
+- [MCP tools](https://on-org.github.io/onlinesim-mcp/raw/tools.md): The 15 tools of onlinesim mcp — inputs, answers, errors and the agent flows for Quick SMS and rentals.
