@@ -1,0 +1,313 @@
+name: release
+
+# Builds the private source repo (s00d/onlinesim-mcp) here, where Actions are free, and publishes the
+# Release in this repo. The source is checked out with a read-only deploy key (secret SRC_DEPLOY_KEY)
+# and never committed here; only the public allowlist (README, LICENSE, install.*, assets, skills) is synced.
+# Manual only — run from Actions → release → Run workflow (branch: master): caches stay warm on master.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version (0.1.5 / v0.1.5). Leave empty → latest release here +1 patch (v0.1.5 → v0.1.6)"
+        required: false
+        type: string
+        default: ""
+      ref:
+        description: "Branch, tag or commit of s00d/onlinesim-mcp to build"
+        required: true
+        type: string
+        default: master
+      dry_run:
+        description: "Build only: no public-file sync, no tag, no Release"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  actions: write # rust-cache + sccache GHA backend
+
+env:
+  CARGO_TERM_COLOR: always
+  SOURCE_REPO: s00d/onlinesim-mcp
+  XWIN_CACHE_DIR: ${{ github.workspace }}/.xwin-cache
+  # Compiler cache shared across targets (host builds; zigbuild stays on host).
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: sccache
+  CMAKE_C_COMPILER_LAUNCHER: sccache
+  CMAKE_CXX_COMPILER_LAUNCHER: sccache
+
+jobs:
+  meta:
+    runs-on: ubuntu-22.04
+    outputs:
+      tag: ${{ steps.norm.outputs.tag }}
+      version: ${{ steps.norm.outputs.version }}
+    steps:
+      - id: norm
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          TOKEN: ${{ github.token }}
+          PUBLIC_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          raw="$(echo "${INPUT_VERSION:-}" | tr -d '[:space:]')"
+          raw="${raw#v}"
+
+          if [ -z "$raw" ]; then
+            echo "No version input — resolving next patch from ${PUBLIC_REPO} latest release..."
+            api="https://api.github.com/repos/${PUBLIC_REPO}/releases/latest"
+            hdr=(-H "Accept: application/vnd.github+json")
+            if [ -n "${TOKEN:-}" ]; then
+              hdr+=(-H "Authorization: Bearer ${TOKEN}")
+            fi
+            code="$(curl -sS -o /tmp/latest.json -w '%{http_code}' "${hdr[@]}" "$api" || true)"
+            if [ "$code" = "200" ]; then
+              latest="$(sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' /tmp/latest.json | head -n1)"
+              latest="${latest#v}"
+              echo "Latest release: v${latest}"
+              if ! [[ "$latest" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)([.-].*)?$ ]]; then
+                echo "error: cannot parse latest tag_name='$latest'" >&2
+                exit 1
+              fi
+              major="${BASH_REMATCH[1]}"
+              minor="${BASH_REMATCH[2]}"
+              patch="${BASH_REMATCH[3]}"
+              patch=$((patch + 1))
+              raw="${major}.${minor}.${patch}"
+              echo "Auto-bumped patch → v${raw}"
+            elif [ "$code" = "404" ]; then
+              raw="0.1.0"
+              echo "No releases yet — starting at v${raw}"
+            else
+              echo "error: GitHub API HTTP ${code} for ${api}" >&2
+              cat /tmp/latest.json >&2 || true
+              exit 1
+            fi
+          fi
+
+          if ! [[ "$raw" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "error: version must look like 0.1.5 (got: '${INPUT_VERSION:-}' → '${raw}')" >&2
+            exit 1
+          fi
+          tag="v${raw}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${raw}" >> "$GITHUB_OUTPUT"
+          echo "Release tag: ${tag}"
+
+  # Three runners: linux (gnu/musl via zigbuild), windows-via-xwin on ubuntu, macos.
+  build:
+    needs: meta
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    env:
+      # option_env! in src/version.rs (no build.rs — host build-scripts break some cross toolchains).
+      ONLINESIM_RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-22.04
+            builder: zigbuild
+            targets: x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu,x86_64-unknown-linux-musl,aarch64-unknown-linux-musl
+          - name: windows
+            os: ubuntu-22.04
+            builder: xwin
+            targets: x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
+          - name: macos
+            os: macos-14
+            builder: cargo
+            targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SOURCE_REPO }}
+          ref: ${{ inputs.ref }}
+          ssh-key: ${{ secrets.SRC_DEPLOY_KEY }}
+          persist-credentials: false
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.targets }}
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Export GHA cache tokens for sccache
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.exportVariable('ACTIONS_RESULTS_URL', process.env.ACTIONS_RESULTS_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Install LLVM/clang/ninja (cargo-xwin)
+        if: matrix.builder == 'xwin'
+        run: |
+          sudo apt-get update
+          # llvm includes llvm-rc — used by winresource to embed assets/icon.ico into .exe
+          sudo apt-get install -y clang lld llvm ninja-build
+          command -v llvm-rc
+
+      - name: Install Zig
+        if: matrix.builder == 'zigbuild'
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.14.0
+
+      # After toolchain. Host target/ only — zigbuild/xwin/cargo all write here (no Docker).
+      # https://github.com/Swatinem/rust-cache
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v1-release
+          shared-key: ${{ matrix.name }}
+          key: ${{ matrix.targets }}
+          cache-on-failure: "true"
+          cache-bin: "true"
+          cache-workspace-crates: "true"
+          cache-directories: |
+            .xwin-cache
+
+      # Prebuilt binaries + GHA tool cache — avoids `cargo install` recompile on every miss.
+      - name: Install cargo-zigbuild
+        if: matrix.builder == 'zigbuild'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-zigbuild
+
+      - name: Install cargo-xwin
+        if: matrix.builder == 'xwin'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-xwin
+
+      - name: Build and package all targets
+        shell: bash
+        run: |
+          set -euo pipefail
+          BIN=onlinesim
+          mkdir -p dist
+          sccache --show-stats || true
+
+          IFS=',' read -r -a TARGETS <<< "${{ matrix.targets }}"
+          BUILDER="${{ matrix.builder }}"
+
+          for target in "${TARGETS[@]}"; do
+            echo "::group::Build ${target} (${BUILDER})"
+            case "${BUILDER}" in
+              cargo)
+                cargo build --release --target "${target}" --locked
+                ;;
+              zigbuild)
+                # musl/gnu via zig: skip tray (GTK) — headless MCP binary.
+                cargo zigbuild --release --target "${target}" --locked --no-default-features
+                ;;
+              xwin)
+                cargo xwin build --release --target "${target}" --locked
+                ;;
+              *)
+                echo "unknown builder: ${BUILDER}" >&2
+                exit 1
+                ;;
+            esac
+            echo "::endgroup::"
+            sccache --show-stats || true
+
+            EXT=""
+            ARCHIVE="tar.gz"
+            if [[ "${target}" == *"windows"* ]]; then
+              EXT=".exe"
+              ARCHIVE="zip"
+            fi
+
+            stage="$(mktemp -d)"
+            cp "target/${target}/release/${BIN}${EXT}" "${stage}/${BIN}${EXT}"
+            cp README.md LICENSE "${stage}/" 2>/dev/null || true
+            asset="${BIN}-${target}"
+            if [[ "${ARCHIVE}" == "zip" ]]; then
+              (cd "${stage}" && zip -r "${GITHUB_WORKSPACE}/dist/${asset}.zip" .)
+            else
+              tar -C "${stage}" -czf "dist/${asset}.${ARCHIVE}" .
+            fi
+            rm -rf "${stage}"
+            echo "Packaged dist/${asset}.${ARCHIVE}"
+          done
+
+          ls -la dist
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/*
+
+  publish:
+    needs: [meta, build]
+    if: ${{ !inputs.dry_run }}
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write # push synced public files, create the tag + Release
+    env:
+      RELEASE_TAG: ${{ needs.meta.outputs.tag }}
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Checkout source (read-only deploy key)
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.SOURCE_REPO }}
+          ref: ${{ inputs.ref }}
+          ssh-key: ${{ secrets.SRC_DEPLOY_KEY }}
+          persist-credentials: false
+          path: .source
+
+      - name: Sync public files from source
+        id: sync
+        run: |
+          set -euo pipefail
+          mkdir -p assets skills
+          cp .source/README.md .source/LICENSE .source/install.sh .source/install.ps1 .
+          cp -R .source/assets/. assets/
+          if [ -d .source/skills ]; then
+            cp -R .source/skills/. skills/
+          fi
+          rm -rf .source
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "sync public files for ${RELEASE_TAG} [skip ci]"
+            git push origin HEAD:master
+          else
+            echo "No public file changes to sync."
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -type f \( -name '*.tar.gz' -o -name '*.zip' \) -exec cp {} release-assets/ \;
+          ls -la release-assets
+          count="$(find release-assets -type f | wc -l | tr -d ' ')"
+          if [ "${count}" -lt 8 ]; then
+            echo "error: expected at least 8 release assets, got ${count}" >&2
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_TAG }}
+          target_commitish: ${{ steps.sync.outputs.sha }}
+          files: release-assets/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
