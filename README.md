@@ -1,6 +1,6 @@
 [![GitHub release](https://img.shields.io/github/v/release/on-org/onlinesim-mcp?style=for-the-badge&label=release)](https://github.com/on-org/onlinesim-mcp/releases/latest)
 [![Downloads](https://img.shields.io/github/downloads/on-org/onlinesim-mcp/total?style=for-the-badge)](https://github.com/on-org/onlinesim-mcp/releases)
-[![Rust](https://img.shields.io/badge/rust-1.88%2B-orange?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/rust-1.89%2B-orange?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
 [![MCP](https://img.shields.io/badge/MCP-Streamable%20HTTP-0d9488?style=for-the-badge)](https://modelcontextprotocol.io)
 [![GitHub issues](https://img.shields.io/github/issues/on-org/onlinesim-mcp?style=for-the-badge)](https://github.com/on-org/onlinesim-mcp/issues)
 [![GitHub stars](https://img.shields.io/github/stars/on-org/onlinesim-mcp?style=for-the-badge)](https://github.com/on-org/onlinesim-mcp/stargazers)
@@ -12,25 +12,11 @@
 
 Local [MCP](https://modelcontextprotocol.io) server (Streamable HTTP) and CLI for [Onlinesim](https://onlinesim.io): order receive-only numbers and read SMS.
 
+**Documentation: https://on-org.github.io/onlinesim-mcp/**
+
 The API key lives in local config (`onlinesim login`) or `ONLINESIM_APIKEY`. Never pass the key in tool arguments.
 
 ## Install
-
-### Agent skill (auto ensure)
-
-Installs the skill so the agent can install the binary, start MCP, and ask for login when needed:
-
-```bash
-npx skills add on-org/onlinesim-mcp                  # this workspace
-npx skills add on-org/onlinesim-mcp -g               # all projects
-npx skills add on-org/onlinesim-mcp -a cursor -y     # Cursor only
-```
-
-Then open a new agent chat. The skill runs `scripts/ensure-ready` first (binary → MCP up → auth). If there is no API key, the agent asks you to paste it and runs `onlinesim login --apikey …`.
-
-**Always-on (every chat):** copy [`skills/onlinesim-mcp/rules/onlinesim-mcp.mdc`](skills/onlinesim-mcp/rules/onlinesim-mcp.mdc) to your project `.cursor/rules/`, or paste it into **Cursor → Settings → Rules → User Rules**.
-
-### Direct binary (no agent)
 
 ```bash
 # macOS / Linux
@@ -38,261 +24,31 @@ curl -fsSL https://raw.githubusercontent.com/on-org/onlinesim-mcp/master/install
 
 # Windows PowerShell
 irm https://raw.githubusercontent.com/on-org/onlinesim-mcp/master/install.ps1 | iex
+
+# or let your agent install it (agent skill)
+npx skills add on-org/onlinesim-mcp
 ```
 
-Binaries are published on [GitHub Releases](https://github.com/on-org/onlinesim-mcp/releases). Build-from-source is for maintainers with private source access.
-
-## How it works
-
-```
-MCP client  ── Streamable HTTP ──►  onlinesim mcp  ──►  Onlinesim API
-                                  http://HOST:PORT/mcp
-CLI: onlinesim sms|rent|…  ────────────────────────────┘
-                       local config + ONLINESIM_APIKEY
-```
-
-Transport: [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http) — a single `/mcp` endpoint (JSON-RPC POST, SSE when needed). Clients discover tools via `tools/list`; you do not need to list them in the client config.
-
-Two product lines (do not mix tools):
-
-1. **Quick SMS** — short-lived number for a service (`telegram`, `whatsapp`, …): balance → catalog → order → user enters the number on the target site → wait/check → cancel.
-2. **Rent** — long-term rental: list rentals → rent → messages / extend / cancel.
-
-Tariff catalogs are cached locally (~5 min). Balance and order operations always hit the API.
-
-Statuses: `TZ_NUM_WAIT` — waiting for SMS; `TZ_NUM_ANSWER` — code received. Ids appear in `[brackets]`: `serviceId` (slug), `countryId` / `rentalId` (numeric), Order / Receipt ID (`tzid`).
+Binaries: [GitHub Releases](https://github.com/on-org/onlinesim-mcp/releases). Details: [Install](https://on-org.github.io/onlinesim-mcp/install).
 
 ## Quick start
 
 ```bash
-onlinesim login
-onlinesim doctor
-onlinesim balance
-onlinesim mcp
-# default: http://127.0.0.1:8787/mcp
-# other bind: onlinesim mcp --bind 127.0.0.1:9000
-# non-loopback requires: onlinesim mcp --bind 0.0.0.0:8787 --allow-remote
+onlinesim login          # paste the API key
+onlinesim mcp            # http://127.0.0.1:8787/mcp — keep it running
+onlinesim mcp install    # wire Cursor for this project (other clients: see the docs)
 ```
 
-The MCP client cannot connect until `onlinesim mcp` is running. Non-loopback binds are refused unless `--allow-remote` (the MCP endpoint has no auth). For access from another host or the cloud, put HTTPS and access control in front yourself — the default bind is loopback only.
+Then ask the agent: *"Get me a number for Telegram and wait for the code."*
 
-### Logs (stderr)
+## Documentation
 
-By default the MCP process logs at **info** on stderr: startup (bind, auth source without the key), each tool call start/ok/err with duration, and wait start/finish (outcome only — never the SMS code).
-
-```bash
-onlinesim mcp                 # onlinesim_mcp=info
-onlinesim -v mcp              # onlinesim_mcp=debug (catalog cache, …)
-RUST_LOG=onlinesim_mcp=debug onlinesim mcp   # explicit filter wins over -v
-```
-
-### Autostart
-
-Enable login/reboot autostart with [`auto-launcher`](https://crates.io/crates/auto-launcher) — same model on every OS (no Windows SCM):
-
-| OS | User (default) | `--system` |
-|---|---|---|
-| Windows | HKCU Run | HKLM Run (admin) |
-| macOS | LaunchAgent `~/Library/LaunchAgents` | LaunchDaemon (sudo) |
-| Linux | systemd --user | systemd system (sudo) |
-
-```bash
-onlinesim mcp autostart install              # enable + start in background
-onlinesim mcp autostart status
-onlinesim mcp autostart start                # start now without changing autostart
-onlinesim mcp autostart uninstall            # disable autostart
-
-sudo onlinesim mcp autostart install --system
-```
-
-Runs as your user by default, so `onlinesim login` / config keep working. Autostart survives reboot after you log in (Windows/macOS) or with a user systemd session (Linux).
-
-### System tray
-
-While `onlinesim mcp` is running, a tray icon (existing app icon) shows:
-
-- balance, active Quick SMS / rental numbers
-- copy number, SMS code, or full message
-- desktop notification on new SMS (code auto-copied when detected); toggle **Notify on SMS**
-- cancel a Quick SMS order
-- install Cursor / VS Code client config
-- toggle **Start at login**
-- **Quit MCP**
-
-```bash
-onlinesim mcp                 # tray on (macOS/Windows; Linux if DISPLAY/WAYLAND set)
-onlinesim mcp --no-tray       # headless / SSH / CI
-```
-
-Linux desktop builds need GTK/AppIndicator (`libgtk-3`, `libayatana-appindicator3`). musl release binaries ship without tray (`--no-default-features`).
-
-## Connect an MCP client
-
-Endpoint: `http://127.0.0.1:8787/mcp` (or your `--bind`). Keep `onlinesim mcp` running.
-
-### Auto-wire (recommended)
-
-```bash
-# Cursor, this project (default)
-onlinesim mcp install
-
-# Cursor, all projects
-onlinesim mcp install --client cursor --global
-
-# VS Code Copilot (project only)
-onlinesim mcp install --client vscode --project
-
-# Claude Code project file (.mcp.json)
-onlinesim mcp install --client claude --project
-
-# Cursor + VS Code + Claude project files
-onlinesim mcp install --client all --project
-
-# Codex (global ~/.codex/config.toml)
-onlinesim mcp install --client codex --global
-```
-
-Flags: `--dir <project-root>`, `--url <endpoint>`, `--force` (overwrite existing `onlinesim` entry).
-
-Or edit configs manually — same JSON body for Cursor and Claude Code project files (`type` is required):
-
-```json
-{
-  "mcpServers": {
-    "onlinesim": {
-      "type": "http",
-      "url": "http://127.0.0.1:8787/mcp"
-    }
-  }
-}
-```
-
-### Cursor
-
-| Scope | File | CLI |
-|-------|------|-----|
-| **Global** (all projects) | `~/.cursor/mcp.json` | `onlinesim mcp install --client cursor --global` |
-| **Project** (this repo / team) | `.cursor/mcp.json` | `onlinesim mcp install` |
-
-Or: Command Palette → **Open MCP settings** → **Add custom MCP**.
-
-### Claude Code
-
-| Scope | How |
-|-------|-----|
-| **Global** (all projects) | `onlinesim mcp install --client claude --global` or `claude mcp add --scope user --transport http onlinesim …` |
-| **Project** (shared via git) | `onlinesim mcp install --client claude --project` → `.mcp.json` |
-| **Local** (you, this project only) | `claude mcp add --transport http onlinesim …` (default) |
-
-Manual project file: `.mcp.json` at the repo root (same JSON as above). User scope: `~/.claude.json`.
-
-### VS Code (GitHub Copilot)
-
-```bash
-onlinesim mcp install --client vscode --project
-```
-
-Project file: `.vscode/mcp.json` — root key is **`servers`**, not `mcpServers`:
-
-```json
-{
-  "servers": {
-    "onlinesim": {
-      "type": "http",
-      "url": "http://127.0.0.1:8787/mcp"
-    }
-  }
-}
-```
-
-### Codex
-
-```bash
-onlinesim mcp install --client codex --global
-# or:
-codex mcp add onlinesim --url http://127.0.0.1:8787/mcp
-```
-
-Or in `~/.codex/config.toml`:
-
-```toml
-[mcp_servers.onlinesim]
-url = "http://127.0.0.1:8787/mcp"
-```
-
-### Claude Desktop / Claude.ai
-
-- **Public HTTPS URL** — Settings → Connectors → Add custom connector → paste the endpoint URL.
-- **Local `http://127.0.0.1/…`** via `url` in `claude_desktop_config.json` is usually unsupported (that file is stdio-oriented). Options: a Custom Connector on proxied HTTPS, or a stdio bridge to Streamable HTTP (e.g. `npx -y mcp-remote http://127.0.0.1:8787/mcp --transport http-only`).
-
-Any other Streamable HTTP client: same URL.
-
-## MCP tools
-
-| Tool | Purpose |
-|------|---------|
-| `get_account_balance` | Balance before spending (available = balance − frozen) |
-| `search_sms_services` | Search Quick SMS services |
-| `get_sms_service_countries` | Countries for a `serviceId` |
-| `find_cheapest_sms_countries` | Cheapest `countryId`s by price |
-| `list_sms_countries` | All unique countries (no `serviceId`) |
-| `order_sms_verification` | Order a number (**spends** balance: reserved, refunded if closed without SMS) |
-| `wait_sms_verification` | Wait for an SMS (default 45s, max 60); read-only, never closes the order |
-| `check_sms_verification` | Status / code by `orderIds` |
-| `cancel_sms_verification` | Close order(s) |
-| `list_sms_orders` | Active Quick SMS orders and rentals |
-| `list_sms_rentals` | Rental tariffs |
-| `rent_sms_number` | Rent a number (**spends** balance: reserved, charged by the first SMS) |
-| `get_sms_rental_messages` | SMS, status, time left and extension periods of a rental |
-| `extend_sms_rental` | Extend a confirmed rental by one of its own extension periods |
-| `cancel_sms_rental` | Cancel a rental |
-
-### Typical agent flow (Quick SMS)
-
-```
-get_account_balance
-→ search_sms_services → find_cheapest_sms_countries
-→ order_sms_verification          # serviceId/countryId from catalog only
-→ user enters the number on the target site and requests SMS
-→ wait_sms_verification(orderId)  # or poll check every 15–30s
-→ cancel_sms_verification
-```
-
-Bulk: `orderIds` / `receiptIds` (1–20), or omit / `[]` for all active. Cancel-all only when the user explicitly asks to close everything. Prefer one bulk call — never one RPC per number.
-
-## CLI
-
-Human-readable by default. For scripts and integrations, use `--format json` (stable envelope on stdout):
-
-```bash
-onlinesim --format json balance
-onlinesim --format json sms search telegram
-# { "ok": true, "command": "sms.search", "data": { ... } }
-```
-
-```bash
-onlinesim sms search telegram
-onlinesim sms countries telegram
-onlinesim sms order telegram 7
-onlinesim sms check
-onlinesim sms cancel 1001
-onlinesim sms list
-
-onlinesim rent list
-onlinesim rent order 7 7
-onlinesim rent messages
-onlinesim rent extend 1001 1   # days: an extension period from `rent messages`
-onlinesim rent cancel 1001
-
-onlinesim config show | path | set
-onlinesim logout
-```
-
-## Dev / mock
-
-Build with `--features dev` to use the in-process `MockOnlineSim` of `onlinesim-rs-api` (no API key, no network). Its state lives as long as the process: a running `onlinesim mcp` keeps its orders, each CLI command starts from a fresh mock. No SMS arrives on its own.
-
-There is no `--dev` / `--live` CLI flag — mock vs live is compile-time only.
+- [Install](https://on-org.github.io/onlinesim-mcp/install) — per OS, agent skill, updates
+- [Connect a client](https://on-org.github.io/onlinesim-mcp/clients) — Cursor, Claude Code, VS Code, Codex, Claude Desktop
+- [MCP tools](https://on-org.github.io/onlinesim-mcp/tools) — all 15 tools with inputs, answers and errors
+- [CLI](https://on-org.github.io/onlinesim-mcp/cli) — terminal commands, JSON output
+- [Configuration](https://on-org.github.io/onlinesim-mcp/configuration) — key, env, logs, autostart, tray, network safety
+- [Changelog](https://on-org.github.io/onlinesim-mcp/changelog)
 
 ## License
 
