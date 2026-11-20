@@ -57,10 +57,10 @@ Optional always-on (every Cursor chat): copy [`rules/onlinesim-mcp.mdc`](rules/o
 1. `get_account_balance` (or `onlinesim balance`) — if low, send top-up link.
 2. `search_sms_services` → `find_cheapest_sms_countries` / `get_sms_service_countries`.
    Full country directory (no service): `list_sms_countries`.
-3. `order_sms_verification` with catalog `serviceId` + `countryId` only (spends balance).
+3. `order_sms_verification` with catalog `serviceId` + `countryId` only (spends balance: reserved, refunded if closed without SMS).
 4. User enters the phone on the target site/app and requests SMS.
-5. Prefer `wait_sms_verification(orderId)`; else poll `check_sms_verification` every 15–30s.
-6. `cancel_sms_verification` when done (early cancel ~2 min may return `NO_COMPLETE_TZID`).
+5. Prefer `wait_sms_verification(orderId)` (read-only, never closes the order); else poll `check_sms_verification` every 15–30s.
+6. `cancel_sms_verification` when done (without an SMS it is refused during the guard — 120 s, 300 s for WhatsApp — with `NO_COMPLETE_TZID` and `guard_secs`).
 
 Ids in `[brackets]`: `serviceId` (slug), `countryId`/`rentalId` (numeric), Order/Receipt ID (`tzid`).  
 Statuses: `TZ_NUM_WAIT` = waiting; `TZ_NUM_ANSWER` = code received.
@@ -68,6 +68,9 @@ Statuses: `TZ_NUM_WAIT` = waiting; `TZ_NUM_ANSWER` = code received.
 ## Rent playbook (separate tools — do not mix with Quick SMS)
 
 `list_sms_rentals` → `rent_sms_number` → `get_sms_rental_messages` / `extend_sms_rental` / `cancel_sms_rental`.
+
+A new rental reserves its price; the first SMS confirms and charges it (no SMS within ~20 min: closed, reservation released).
+`extend_sms_rental` only after that SMS, with one of the rental's own extension periods (listed by `get_sms_rental_messages`).
 
 ## Scripts in this skill
 

@@ -231,20 +231,20 @@ Any other Streamable HTTP client: same URL.
 
 | Tool | Purpose |
 |------|---------|
-| `get_account_balance` | Balance before spending |
+| `get_account_balance` | Balance before spending (available = balance − frozen) |
 | `search_sms_services` | Search Quick SMS services |
 | `get_sms_service_countries` | Countries for a `serviceId` |
 | `find_cheapest_sms_countries` | Cheapest `countryId`s by price |
 | `list_sms_countries` | All unique countries (no `serviceId`) |
-| `order_sms_verification` | Order a number (**spends** balance) |
-| `wait_sms_verification` | Wait for a code (default 45s, max 60; shared poller) |
+| `order_sms_verification` | Order a number (**spends** balance: reserved, refunded if closed without SMS) |
+| `wait_sms_verification` | Wait for an SMS (default 45s, max 60); read-only, never closes the order |
 | `check_sms_verification` | Status / code by `orderIds` |
 | `cancel_sms_verification` | Close order(s) |
-| `list_sms_orders` | Active Quick SMS orders |
+| `list_sms_orders` | Active Quick SMS orders and rentals |
 | `list_sms_rentals` | Rental tariffs |
-| `rent_sms_number` | Rent a number (**spends** balance) |
-| `get_sms_rental_messages` | SMS for a rental |
-| `extend_sms_rental` | Extend |
+| `rent_sms_number` | Rent a number (**spends** balance: reserved, charged by the first SMS) |
+| `get_sms_rental_messages` | SMS, status, time left and extension periods of a rental |
+| `extend_sms_rental` | Extend a confirmed rental by one of its own extension periods |
 | `cancel_sms_rental` | Cancel a rental |
 
 ### Typical agent flow (Quick SMS)
@@ -281,7 +281,7 @@ onlinesim sms list
 onlinesim rent list
 onlinesim rent order 7 7
 onlinesim rent messages
-onlinesim rent extend 1001 7
+onlinesim rent extend 1001 1   # days: an extension period from `rent messages`
 onlinesim rent cancel 1001
 
 onlinesim config show | path | set
@@ -290,7 +290,7 @@ onlinesim logout
 
 ## Dev / mock
 
-Build with `--features dev` to use `MockOnlineSim` (no API key, no real HTTPS). State file: `…/onlinesim/mock-state.json` or `ONLINESIM_MOCK_STATE`. Reset: `onlinesim config reset-mock`.
+Build with `--features dev` to use the in-process `MockOnlineSim` of `onlinesim-rs-api` (no API key, no network). Its state lives as long as the process: a running `onlinesim mcp` keeps its orders, each CLI command starts from a fresh mock. No SMS arrives on its own.
 
 There is no `--dev` / `--live` CLI flag — mock vs live is compile-time only.
 
